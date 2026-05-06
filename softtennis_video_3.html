@@ -1,0 +1,2022 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>ソフトテニス 録画分析</title>
+<style>
+/* ══ RESET ══ */
+*{box-sizing:border-box;margin:0;padding:0;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  font-family:system-ui,-apple-system,sans-serif;
+  background:#f0f4f8;color:#1a2a3a;min-height:100vh;
+  -webkit-tap-highlight-color:transparent;
+  font-size:16px;
+}
+button{
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;user-select:none;cursor:pointer;
+  border:none;background:none;
+}
+input,select{-webkit-appearance:none;appearance:none;border-radius:0;}
+
+/* ══════════════════════════════
+   画面切り替え
+══════════════════════════════ */
+.screen{display:none;}
+.screen.active{display:block;}
+
+/* ══════════════════════════════
+   セットアップ画面
+══════════════════════════════ */
+#suScreen{background:#f0f4f8;min-height:100vh;}
+.su-wrap{max-width:480px;margin:0 auto;padding:18px 14px 36px;}
+
+.su-title{
+  text-align:center;font-size:1.4em;font-weight:800;
+  color:#166534;margin-bottom:4px;letter-spacing:.03em;
+}
+.su-sub{text-align:center;font-size:.8em;color:#64748b;margin-bottom:20px;}
+
+.su-box{
+  background:#fff;border:2px solid #e2e8f0;border-radius:12px;
+  padding:16px;margin-bottom:12px;
+  box-shadow:0 1px 4px rgba(0,0,0,.06);
+}
+.su-box-title{
+  font-size:.66em;font-weight:800;color:#64748b;
+  text-transform:uppercase;letter-spacing:.1em;
+  margin-bottom:12px;display:flex;align-items:center;gap:6px;
+}
+.su-box-title span{
+  background:#166534;color:#fff;border-radius:4px;
+  padding:1px 7px;font-size:.88em;
+}
+
+/* フォーム部品 */
+.f-grp{display:flex;flex-direction:column;gap:4px;margin-bottom:10px;}
+.f-grp:last-child{margin-bottom:0;}
+.f-lbl{font-size:.74em;font-weight:700;color:#374151;}
+.f-inp{
+  width:100%;background:#f8fafc;border:2px solid #e2e8f0;
+  border-radius:7px;padding:11px 12px;
+  color:#1a2a3a;font-size:16px;font-weight:600;outline:none;
+  transition:border-color .12s;
+}
+.f-inp:focus{border-color:#166534;background:#fff;}
+.f-inp[readonly]{background:#e2e8f0;color:#64748b;border-color:#e2e8f0;}
+.f-hint{font-size:.65em;color:#94a3b8;margin-top:2px;}
+
+/* ── セットアップ テーブル ── */
+.setup-table{
+  width:100%;border-collapse:collapse;font-size:.88em;
+}
+.setup-table th{
+  background:#f1f5f9;border:2px solid #e2e8f0;
+  padding:8px 6px;text-align:center;font-size:.7em;
+  font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;
+  line-height:1.4;
+}
+.setup-table th.left-h{text-align:left;padding-left:10px;}
+.setup-table td{
+  border:2px solid #e2e8f0;padding:7px 5px;
+  vertical-align:middle;
+}
+.setup-table td.pair-label{
+  font-weight:800;font-size:.85em;padding-left:10px;
+  white-space:nowrap;background:#f8fafc;
+}
+/* ペア行の色 */
+.setup-table tr.pair1-row td{background:#fff;}
+.setup-table tr.pair2-row td{background:#fafeff;}
+
+/* 名前入力 */
+.setup-table .name-inp{
+  width:100%;border:none;border-bottom:2px solid #e2e8f0;
+  background:transparent;padding:6px 4px;
+  font-size:15px;font-weight:700;color:#1a2a3a;outline:none;
+  transition:border-color .12s;
+}
+.setup-table .name-inp:focus{border-bottom-color:#166534;}
+
+/* ラジオ風ボタン */
+.radio-cell{text-align:center;padding:6px 4px;}
+.radio-btn{
+  width:38px;height:38px;border:2.5px solid #e2e8f0;border-radius:50%;
+  background:#f8fafc;font-size:1.1em;color:#cbd5e1;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .12s;
+}
+.radio-btn:active{transform:scale(.92);}
+.radio-btn.checked-oku{
+  background:#fff7ed;border-color:#f97316;color:#f97316;
+}
+.radio-btn.checked-mae{
+  background:#eff6ff;border-color:#3b82f6;color:#3b82f6;
+}
+/* 自動反映ラベル */
+.auto-label{
+  display:inline-block;font-size:.68em;font-weight:700;
+  padding:2px 8px;border-radius:10px;margin-top:4px;
+}
+.auto-label.oku{background:#fff7ed;color:#c2410c;border:1px solid #f97316;}
+.auto-label.mae{background:#eff6ff;color:#1d4ed8;border:1px solid #3b82f6;}
+.auto-label.none{background:#f1f5f9;color:#94a3b8;border:1px solid #e2e8f0;}
+
+/* 凡例 */
+.legend-row{
+  display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;
+  font-size:.72em;color:#64748b;align-items:center;
+}
+.legend-dot{
+  display:inline-block;width:10px;height:10px;border-radius:50%;
+  margin-right:3px;vertical-align:middle;
+}
+
+/* 開始ボタン */
+.su-start{
+  width:100%;padding:16px;background:#166534;border:none;
+  border-radius:10px;color:#fff;font-size:1.05em;font-weight:800;
+  margin-top:14px;letter-spacing:.04em;min-height:56px;
+  box-shadow:0 3px 10px rgba(22,101,52,.3);transition:all .12s;
+}
+.su-start:active{background:#14532d;transform:scale(.98);}
+
+/* ══════════════════════════════
+   試合記録画面
+══════════════════════════════ */
+#matchScreen{background:#f0f4f8;min-height:100vh;}
+
+/* スコアボード */
+.scoreboard{
+  background:#1e293b;
+  padding:8px 10px 6px;
+  position:sticky;top:0;z-index:100;
+  box-shadow:0 2px 8px rgba(0,0,0,.3);
+}
+.sb-meta{
+  font-size:.62em;color:#475569;margin-bottom:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.score-table{width:100%;border-collapse:collapse;}
+.score-table th{
+  background:#0f172a;color:#64748b;font-size:.62em;font-weight:800;
+  text-transform:uppercase;letter-spacing:.06em;
+  padding:5px 4px;text-align:center;border:1px solid #334155;
+}
+.score-table th.name-h{text-align:left;min-width:60px;}
+.score-table th.pq-h{text-align:left;padding-left:6px;}
+.score-table td{
+  padding:8px 4px;border:1px solid #334155;
+  text-align:center;font-weight:800;
+}
+.score-table td.name-cell{
+  text-align:left;padding-left:6px;
+  font-size:.78em;font-weight:800;white-space:nowrap;
+}
+.score-table td.pq-cell{
+  font-size:.68em;color:#94a3b8;text-align:left;
+  padding-left:5px;white-space:normal;word-break:break-all;
+  max-width:100px;line-height:1.5;
+}
+.oku-row td{background:#1c1108;}
+.oku-row td.name-cell{color:#fb923c;font-size:.88em;}
+.oku-row td.pq-cell{color:#a16207;}
+.oku-row td.g-cell{color:#fdba74;font-size:1.35em;}
+.oku-row td.b-cell{color:#fbbf24;font-size:1.35em;}
+.oku-row td.s-cell{color:#4ade80;font-size:1.25em;}
+.mae-row td{background:#080e20;}
+.mae-row td.name-cell{color:#60a5fa;font-size:.88em;}
+.mae-row td.pq-cell{color:#1d4ed8;}
+.mae-row td.g-cell{color:#93c5fd;font-size:1.35em;}
+.mae-row td.b-cell{color:#60a5fa;font-size:1.35em;}
+.mae-row td.s-cell{color:#4ade80;font-size:1.25em;}
+
+/* 情報バー */
+.info-bar{
+  background:#fff;border-bottom:2px solid #e2e8f0;
+  padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:nowrap;
+  position:sticky;top:0;z-index:90;
+}
+.undo-always-btn{
+  margin-left:auto;flex-shrink:0;
+  padding:9px 16px;border:2.5px solid #ef4444;border-radius:8px;
+  background:#fef2f2;color:#dc2626;font-size:.84em;font-weight:800;
+  min-height:44px;transition:all .12s;white-space:nowrap;
+}
+.undo-always-btn:active{background:#fee2e2;border-color:#b91c1c;}
+.pt-badge{
+  background:#1e293b;color:#93c5fd;border-radius:7px;
+  padding:7px 14px;font-size:.9em;font-weight:800;letter-spacing:.05em;
+}
+.fs-tag{font-size:.78em;color:#ca8a04;font-weight:800;}
+
+/* 入力エリア */
+.input-area{max-width:100%;margin:0 auto;padding:10px 14px 100px;}
+
+/* ステップラベル */
+.step-label{
+  font-size:.72em;font-weight:800;color:#475569;
+  text-transform:uppercase;letter-spacing:.08em;
+  margin-bottom:10px;margin-top:4px;
+}
+
+/* 戻るボタン */
+.bk-btn{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:10px 16px;border:2px solid #e2e8f0;border-radius:8px;
+  background:#fff;color:#475569;font-size:.8em;font-weight:700;
+  margin-bottom:12px;min-height:46px;transition:all .1s;
+}
+.bk-btn:active{border-color:#166534;color:#166534;background:#f0fdf4;}
+
+/* 1stサーブボタン */
+.fs-row{display:flex;gap:12px;margin-bottom:6px;}
+.fs-btn{
+  flex:1;padding:22px 8px;border:3.5px solid;border-radius:14px;
+  font-size:1em;font-weight:800;text-align:center;
+  min-height:82px;transition:all .12s;line-height:1.5;
+}
+.fs-btn:active{transform:scale(.96);}
+.fs-btn.in {background:#dcfce7;border-color:#16a34a;color:#166534;}
+.fs-btn.flt{background:#fefce8;border-color:#ca8a04;color:#92400e;}
+
+/* 得点チームボタン */
+.team-row{display:flex;gap:10px;margin-bottom:6px;}
+.team-btn{
+  flex:1;padding:20px 6px;border:3.5px solid;border-radius:14px;
+  font-size:.95em;font-weight:800;text-align:center;
+  min-height:90px;transition:all .12s;line-height:1.5;
+}
+.team-btn:active{transform:scale(.96);}
+.team-btn.oku{background:#fff7ed;border-color:#f97316;color:#c2410c;}
+.team-btn.mae{background:#eff6ff;border-color:#3b82f6;color:#1d4ed8;}
+.team-name{font-size:.78em;opacity:.7;margin-top:4px;}
+.team-result{font-size:.88em;margin-top:5px;}
+
+/* ショット種類 */
+.shot-section{margin-bottom:10px;}
+.shot-cat{
+  font-size:.68em;font-weight:800;color:#475569;
+  text-transform:uppercase;letter-spacing:.08em;
+  border-bottom:2.5px solid #e2e8f0;padding-bottom:4px;margin-bottom:6px;
+}
+.shot-row{display:flex;gap:6px;flex-wrap:wrap;}
+.shot-btn{
+  padding:12px 12px;border:2.5px solid #e2e8f0;border-radius:9px;
+  background:#fff;font-size:.86em;font-weight:700;color:#1a2a3a;
+  min-height:50px;transition:all .1s;
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+.shot-btn:active{background:#dcfce7;border-color:#16a34a;color:#166534;transform:scale(.94);}
+
+/* ミス種別 */
+.miss-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.miss-btn{
+  padding:14px 4px;border:3px solid;border-radius:11px;
+  background:#fff;font-size:.84em;font-weight:800;
+  text-align:center;min-height:64px;transition:all .1s;
+}
+.miss-btn:active{filter:brightness(.88);transform:scale(.95);}
+
+/* 完了カード */
+.complete-card{
+  background:#fff;border:2.5px solid #16a34a;border-radius:13px;
+  padding:16px;box-shadow:0 3px 12px rgba(22,163,74,.15);
+}
+.complete-title{
+  color:#166534;font-weight:800;font-size:1em;
+  margin-bottom:10px;display:flex;align-items:center;gap:6px;
+}
+.complete-info{
+  font-size:.78em;color:#374151;line-height:2;
+  background:#f8fafc;border-radius:7px;padding:9px 11px;margin-bottom:12px;
+  border:1px solid #e2e8f0;
+}
+.next-btn{
+  width:100%;padding:16px;background:#166534;border:none;
+  border-radius:11px;color:#fff;font-size:1em;font-weight:800;
+  margin-bottom:8px;min-height:58px;
+  box-shadow:0 3px 10px rgba(22,101,52,.3);transition:all .12s;
+}
+.next-btn:active{background:#14532d;transform:scale(.97);}
+.endg-btn{
+  width:100%;padding:14px;background:#fff;border:3px solid #dc2626;
+  border-radius:11px;color:#dc2626;font-size:.9em;font-weight:800;
+  margin-bottom:8px;min-height:54px;transition:all .12s;
+}
+.endg-btn:active{background:#fef2f2;transform:scale(.97);}
+.match-end-btn{
+  width:100%;padding:12px;background:#fff;border:2px solid #94a3b8;
+  border-radius:10px;color:#475569;font-size:.84em;font-weight:700;
+  min-height:48px;transition:all .12s;
+}
+.final-btn{
+  width:100%;padding:12px;background:#1e1b4b;border:2.5px solid #6366f1;
+  border-radius:9px;color:#c7d2fe;font-size:.88em;font-weight:800;
+  margin-bottom:6px;min-height:48px;transition:all .12s;
+}
+.final-btn:active{background:#312e81;}
+.match-end-btn:active{background:#f1f5f9;}
+
+/* ツールバー（固定下部） */
+.toolbar{
+  position:fixed;bottom:0;left:0;right:0;
+  background:#fff;border-top:2.5px solid #e2e8f0;
+  padding:10px 14px;
+  padding-bottom:max(10px, env(safe-area-inset-bottom));
+  display:flex;gap:10px;justify-content:flex-end;
+  box-shadow:0 -3px 12px rgba(0,0,0,.1);z-index:100;
+}
+.tb-btn{
+  padding:12px 20px;border:2px solid #e2e8f0;border-radius:9px;
+  background:#f8fafc;color:#374151;font-size:.84em;font-weight:700;
+  min-height:50px;transition:all .1s;
+}
+.tb-btn:active{border-color:#374151;background:#e2e8f0;}
+.tb-btn.danger{border-color:#fca5a5;color:#dc2626;background:#fef2f2;font-weight:800;}
+
+/* アンドゥトースト */
+.undo-toast{
+  position:fixed;bottom:calc(80px + env(safe-area-inset-bottom, 0px));left:50%;transform:translateX(-50%);
+  background:#1e293b;color:#fff;border-radius:10px;
+  padding:13px 24px;font-size:.9em;font-weight:700;
+  z-index:999;display:none;box-shadow:0 4px 16px rgba(0,0,0,.25);
+  white-space:nowrap;
+}
+.undo-toast.show{display:block;animation:slideUp .2s ease;}
+@keyframes slideUp{from{opacity:0;transform:translateX(-50%) translateY(8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* コートチェンジ通知 */
+.change-toast{
+  position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+  background:#166534;border:3px solid #4ade80;border-radius:14px;
+  padding:18px 28px;font-size:1em;color:#fff;font-weight:800;
+  z-index:998;display:none;box-shadow:0 8px 24px rgba(0,0,0,.25);
+  text-align:center;line-height:1.6;
+}
+.change-toast.show{display:block;animation:popIn .25s ease;}
+@keyframes popIn{from{opacity:0;transform:translate(-50%,-50%) scale(.85)}to{opacity:1;transform:translate(-50%,-50%) scale(1)}}
+
+/* 試合終了モーダル */
+.modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);
+  z-index:999;align-items:center;justify-content:center;padding:16px;
+}
+.modal-overlay.show{display:flex;}
+.modal-box{
+  background:#fff;border-radius:14px;padding:24px;
+  max-width:360px;width:100%;text-align:center;
+  box-shadow:0 8px 32px rgba(0,0,0,.2);
+}
+.modal-box h2{color:#166534;font-size:1.15em;margin-bottom:14px;}
+.modal-box p{font-size:.84em;color:#374151;line-height:1.75;margin-bottom:18px;}
+.modal-btns{display:flex;gap:10px;}
+.m-btn{
+  flex:1;padding:13px;border:2px solid;border-radius:8px;
+  font-size:.86em;font-weight:700;min-height:48px;transition:all .12s;
+}
+.m-btn:active{transform:scale(.97);}
+.m-ok {background:#166534;border-color:#166534;color:#fff;}
+.m-cancel{background:#fff;border-color:#e2e8f0;color:#64748b;}
+
+/* 完了画面レイアウト */
+.complete-wrap{
+  display:flex;flex-direction:column;gap:10px;
+}
+.complete-card{
+  width:100%;
+}
+/* 完了後スコアプレビュー */
+.score-preview{
+  width:100%;
+  background:#fff;border:2.5px solid #166534;border-radius:13px;
+  padding:12px 10px;box-shadow:0 3px 12px rgba(22,163,74,.12);
+}
+.sp-title{
+  font-size:.65em;font-weight:800;color:#166534;
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;
+  text-align:center;
+}
+.sp-table{width:100%;border-collapse:collapse;font-size:.82em;}
+.sp-table th{
+  background:#f0fdf4;border:1.5px solid #bbf7d0;
+  padding:4px 5px;text-align:center;font-size:.65em;
+  font-weight:800;color:#166534;text-transform:uppercase;
+  letter-spacing:.06em;
+}
+.sp-table th.sp-name-h{text-align:left;padding-left:7px;}
+.sp-table td{
+  padding:9px 5px;border:1.5px solid #e2e8f0;
+  text-align:center;font-weight:800;
+}
+.sp-table td.sp-name{text-align:left;padding-left:7px;font-size:.82em;}
+.sp-table tr.sp-oku td{background:#fff7ed;}
+.sp-table tr.sp-oku td.sp-name{color:#f97316;}
+.sp-table tr.sp-mae td{background:#eff6ff;}
+.sp-table tr.sp-mae td.sp-name{color:#3b82f6;}
+.sp-table td.sp-g{font-size:1.3em;color:#1e293b;}
+.sp-table td.sp-b{font-size:1.3em;}
+/* 得点が入ったセル */
+.sp-table td.sp-b.scored{color:#166534;font-size:1.2em;}
+.sp-table td.sp-g.scored{color:#166534;font-size:1.2em;}
+.sp-table td.sp-b.game-end{color:#dc2626;font-size:1.1em;font-weight:800;
+  background:#fef2f2;border-color:#fca5a5;}
+/* 取消ボタン（完了カード内） */
+.undo-in-card{
+  width:100%;padding:9px;background:#fff;
+  border:2px solid #cbd5e1;border-radius:8px;
+  color:#64748b;font-size:.8em;font-weight:700;
+  margin-bottom:6px;min-height:40px;transition:all .12s;
+}
+.undo-in-card:active{background:#f1f5f9;border-color:#374151;}
+
+/* ─ サービス選択テーブル ─ */
+.srv-table{width:100%;border-collapse:collapse;margin-bottom:10px;}
+.srv-table th{
+  background:#f1f5f9;border:2px solid #e2e8f0;
+  padding:8px 6px;text-align:center;font-size:.72em;
+  font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;
+}
+.srv-table th.srv-name-h{text-align:left;padding-left:10px;min-width:80px;}
+.srv-table td{
+  border:2px solid #e2e8f0;padding:8px 6px;text-align:center;
+  vertical-align:middle;
+}
+.srv-table td.srv-name{
+  text-align:left;padding-left:10px;font-size:.86em;font-weight:700;
+}
+.srv-table tr.srv-oku td{background:#fff7ed;}
+.srv-table tr.srv-oku td.srv-name{color:#c2410c;}
+.srv-table tr.srv-mae td{background:#eff6ff;}
+.srv-table tr.srv-mae td.srv-name{color:#1d4ed8;}
+.srv-radio{
+  width:46px;height:46px;border:2.5px solid #e2e8f0;border-radius:50%;
+  background:#f8fafc;font-size:1.3em;color:#cbd5e1;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .12s;
+}
+.srv-radio:active{transform:scale(.9);}
+.srv-radio.sel-srv{background:#dcfce7;border-color:#16a34a;color:#166534;}
+.srv-radio.sel-rcv{background:#dbeafe;border-color:#3b82f6;color:#1d4ed8;}
+.srv-next-btn{
+  width:100%;padding:16px;background:#166534;border:none;
+  border-radius:10px;color:#fff;font-size:1em;font-weight:800;
+  min-height:56px;margin-top:6px;transition:all .12s;
+  box-shadow:0 2px 8px rgba(22,101,52,.2);
+}
+.srv-next-btn:active{background:#14532d;}
+.srv-next-btn:disabled{background:#94a3b8;cursor:not-allowed;box-shadow:none;}
+.srv-legend{
+  display:flex;gap:14px;font-size:.72em;color:#64748b;margin-bottom:10px;
+  align-items:center;flex-wrap:wrap;
+}
+.srv-dot{
+  display:inline-block;width:10px;height:10px;border-radius:50%;
+  margin-right:3px;vertical-align:middle;
+}
+
+/* ─ サービス選択テーブル ─ */
+}
+
+
+
+
+
+/* ─ コート＋パネル横並び ─ */
+.court-body{
+  max-width:680px;margin:0 auto;
+  display:flex;gap:10px;align-items:flex-start;
+  padding:8px 10px 0;
+}
+.court-wrap{
+  flex:0 0 auto;width:220px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.court-area{width:100%;}
+#csvg{display:block;}
+.court-tgl{display:flex;gap:4px;margin-bottom:4px;}
+.c-tgl-btn{
+  flex:1;padding:8px 4px;border:2px solid #e2e8f0;border-radius:7px;
+  background:#f8fafc;color:#475569;font-size:.76em;font-weight:800;
+  transition:all .1s;min-height:38px;
+}
+.c-tgl-btn.on{background:#1e293b;border-color:#38bdf8;color:#67e8f9;}
+.input-panel{
+  flex:1;min-width:0;
+  max-height:calc(100svh - 180px);
+  overflow-y:auto;
+  padding-bottom:60px;
+}
+/* ポイントログ */
+.pt-log{
+  max-width:680px;margin:8px auto 0;
+  background:#f8fafc;border:2px solid #e2e8f0;
+  border-radius:8px;padding:8px;
+  max-height:110px;overflow-y:auto;
+}
+.pt-log-title{font-size:.62em;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;}
+.log-table{width:100%;border-collapse:collapse;font-size:.64em;}
+.log-table th{padding:3px 4px;color:#94a3b8;text-align:left;border-bottom:1.5px solid #e2e8f0;white-space:nowrap;}
+.log-table td{padding:3px 4px;border-bottom:1px solid #f1f5f9;white-space:nowrap;}
+
+/* コートステップ専用のパネルスタイル（ダーク） */
+.court-step-box{
+  background:#0b1e34;border:1.5px solid #1e4060;border-radius:10px;
+  padding:12px;color:#dde8f4;
+}
+.cs-title{font-size:.7em;color:#4a90b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-weight:800;}
+.cs-inst{font-size:.88em;color:#7ab8d8;margin-bottom:8px;line-height:1.5;}
+.cs-tip {font-size:.78em;color:#3a6080;line-height:1.55;}
+.cs-set {font-size:.8em;color:#22c55e;background:#050f08;border-radius:5px;padding:7px 10px;margin-top:6px;}
+
+@media(max-width:540px){
+  .court-wrap{width:42%;min-width:110px;}
+  .team-btn{padding:18px 5px;min-height:82px;font-size:.9em;}
+  .shot-btn{font-size:.8em;padding:10px 9px;min-height:46px;}
+}
+@media(min-width:600px){
+  .input-area{max-width:520px;}
+}
+
+/* レスポンシブ */
+@media(max-width:400px){/* ─ サービス選択テーブル ─ */
+.srv-table{width:100%;border-collapse:collapse;margin-bottom:10px;}
+.srv-table th{
+  background:#f1f5f9;border:2px solid #e2e8f0;
+  padding:8px 6px;text-align:center;font-size:.72em;
+  font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;
+}
+.srv-table th.srv-name-h{text-align:left;padding-left:10px;min-width:80px;}
+.srv-table td{
+  border:2px solid #e2e8f0;padding:8px 6px;text-align:center;
+  vertical-align:middle;
+}
+.srv-table td.srv-name{
+  text-align:left;padding-left:10px;font-size:.86em;font-weight:700;
+}
+.srv-table tr.srv-oku td{background:#fff7ed;}
+.srv-table tr.srv-oku td.srv-name{color:#c2410c;}
+.srv-table tr.srv-mae td{background:#eff6ff;}
+.srv-table tr.srv-mae td.srv-name{color:#1d4ed8;}
+.srv-radio{
+  width:46px;height:46px;border:2.5px solid #e2e8f0;border-radius:50%;
+  background:#f8fafc;font-size:1.3em;color:#cbd5e1;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .12s;
+}
+.srv-radio:active{transform:scale(.9);}
+.srv-radio.sel-srv{background:#dcfce7;border-color:#16a34a;color:#166534;}
+.srv-radio.sel-rcv{background:#dbeafe;border-color:#3b82f6;color:#1d4ed8;}
+.srv-next-btn{
+  width:100%;padding:16px;background:#166534;border:none;
+  border-radius:10px;color:#fff;font-size:1em;font-weight:800;
+  min-height:56px;margin-top:6px;transition:all .12s;
+  box-shadow:0 2px 8px rgba(22,101,52,.2);
+}
+.srv-next-btn:active{background:#14532d;}
+.srv-next-btn:disabled{background:#94a3b8;cursor:not-allowed;box-shadow:none;}
+.srv-legend{
+  display:flex;gap:14px;font-size:.72em;color:#64748b;margin-bottom:10px;
+  align-items:center;flex-wrap:wrap;
+}
+.srv-dot{
+  display:inline-block;width:10px;height:10px;border-radius:50%;
+  margin-right:3px;vertical-align:middle;
+}
+
+/* ─ サービス選択テーブル ─ */
+.srv-table{width:100%;border-collapse:collapse;margin-bottom:10px;}
+.srv-table th{
+  background:#f1f5f9;border:2px solid #e2e8f0;
+  padding:8px 6px;text-align:center;font-size:.72em;
+  font-weight:800;color:#64748b;text-transform:uppercase;letter-spacing:.06em;
+}
+.srv-table th.srv-name-h{text-align:left;padding-left:10px;min-width:80px;}
+.srv-table td{
+  border:2px solid #e2e8f0;padding:8px 6px;text-align:center;
+  vertical-align:middle;
+}
+.srv-table td.srv-name{
+  text-align:left;padding-left:10px;font-size:.86em;font-weight:700;
+}
+.srv-table tr.srv-oku td{background:#fff7ed;}
+.srv-table tr.srv-oku td.srv-name{color:#c2410c;}
+.srv-table tr.srv-mae td{background:#eff6ff;}
+.srv-table tr.srv-mae td.srv-name{color:#1d4ed8;}
+.srv-radio{
+  width:46px;height:46px;border:2.5px solid #e2e8f0;border-radius:50%;
+  background:#f8fafc;font-size:1.3em;color:#cbd5e1;
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:all .12s;
+}
+.srv-radio:active{transform:scale(.9);}
+.srv-radio.sel-srv{background:#dcfce7;border-color:#16a34a;color:#166534;}
+.srv-radio.sel-rcv{background:#dbeafe;border-color:#3b82f6;color:#1d4ed8;}
+.srv-next-btn{
+  width:100%;padding:16px;background:#166534;border:none;
+  border-radius:10px;color:#fff;font-size:1em;font-weight:800;
+  min-height:56px;margin-top:6px;transition:all .12s;
+  box-shadow:0 2px 8px rgba(22,101,52,.2);
+}
+.srv-next-btn:active{background:#14532d;}
+.srv-next-btn:disabled{background:#94a3b8;cursor:not-allowed;box-shadow:none;}
+.srv-legend{
+  display:flex;gap:14px;font-size:.72em;color:#64748b;margin-bottom:10px;
+  align-items:center;flex-wrap:wrap;
+}
+.srv-dot{
+  display:inline-block;width:10px;height:10px;border-radius:50%;
+  margin-right:3px;vertical-align:middle;
+}
+
+
+
+
+
+/* ─ コート＋パネル横並び ─ */
+.court-body{
+  max-width:680px;margin:0 auto;
+  display:flex;gap:10px;align-items:flex-start;
+  padding:8px 10px 0;
+}
+.court-wrap{
+  flex:0 0 auto;width:220px;
+  display:flex;flex-direction:column;gap:4px;
+}
+.court-area{width:100%;}
+#csvg{display:block;}
+.court-tgl{display:flex;gap:4px;margin-bottom:4px;}
+.c-tgl-btn{
+  flex:1;padding:8px 4px;border:2px solid #e2e8f0;border-radius:7px;
+  background:#f8fafc;color:#475569;font-size:.76em;font-weight:800;
+  transition:all .1s;min-height:38px;
+}
+.c-tgl-btn.on{background:#1e293b;border-color:#38bdf8;color:#67e8f9;}
+.input-panel{
+  flex:1;min-width:0;
+  max-height:calc(100svh - 180px);
+  overflow-y:auto;
+  padding-bottom:60px;
+}
+/* ポイントログ */
+.pt-log{
+  max-width:680px;margin:8px auto 0;
+  background:#f8fafc;border:2px solid #e2e8f0;
+  border-radius:8px;padding:8px;
+  max-height:110px;overflow-y:auto;
+}
+.pt-log-title{font-size:.62em;color:#94a3b8;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;}
+.log-table{width:100%;border-collapse:collapse;font-size:.64em;}
+.log-table th{padding:3px 4px;color:#94a3b8;text-align:left;border-bottom:1.5px solid #e2e8f0;white-space:nowrap;}
+.log-table td{padding:3px 4px;border-bottom:1px solid #f1f5f9;white-space:nowrap;}
+
+/* コートステップ専用のパネルスタイル（ダーク） */
+.court-step-box{
+  background:#0b1e34;border:1.5px solid #1e4060;border-radius:10px;
+  padding:12px;color:#dde8f4;
+}
+.cs-title{font-size:.7em;color:#4a90b8;text-transform:uppercase;letter-spacing:.1em;margin-bottom:8px;font-weight:800;}
+.cs-inst{font-size:.88em;color:#7ab8d8;margin-bottom:8px;line-height:1.5;}
+.cs-tip {font-size:.78em;color:#3a6080;line-height:1.55;}
+.cs-set {font-size:.8em;color:#22c55e;background:#050f08;border-radius:5px;padding:7px 10px;margin-top:6px;}
+
+@media(max-width:540px){
+  .court-wrap{width:42%;min-width:110px;}
+  .team-btn{padding:18px 5px;min-height:82px;font-size:.9em;}
+  .shot-btn{font-size:.8em;padding:10px 9px;min-height:46px;}
+}
+@media(min-width:600px){
+  .input-area{max-width:520px;}
+}
+
+/* レスポンシブ */
+@media(max-width:400px){
+  .player-grid{grid-template-columns:1fr 1fr;}
+  .miss-grid{grid-template-columns:1fr 1fr;}
+  .team-btn{padding:18px 6px;min-height:76px;}
+  .fs-btn{padding:16px 6px;min-height:64px;}
+}
+@media(min-width:540px){
+  .shot-row .shot-btn{min-width:auto;}
+}
+</style>
+</head>
+<body>
+
+<!-- トースト類 -->
+<div class="undo-toast" id="undoToast">↩ 取り消しました</div>
+<div class="change-toast" id="changeToast">
+  🔄 コートチェンジ！<br>
+  <span style="font-size:.85em;font-weight:600;opacity:.85">奥と手前を入れ替えました</span>
+</div>
+
+<!-- 試合終了モーダル -->
+<div class="modal-overlay" id="endModal" style="display:none;">
+  <div class="modal-box">
+    <h2>🏆 試合終了</h2>
+    <p id="endModalInfo"></p>
+    <div class="modal-btns">
+      <button class="m-btn m-cancel" onclick="closeEndModal()">← 戻る</button>
+      <button class="m-btn m-ok"     onclick="confirmEnd()">終了・CSV保存</button>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ══════════════════════════════
+     セットアップ画面
+══════════════════════════════ -->
+<div id="suScreen" class="screen active">
+  <div class="su-wrap">
+    <div class="su-title">🎬 ソフトテニス<br>録画分析モード</div>
+    <div class="su-sub">録画映像を見ながら座標付きで詳細記録</div>
+
+    <!-- ① 試合情報 -->
+    <div class="su-box">
+      <div class="su-box-title"><span>①</span> 試合情報</div>
+      <div class="f-grp">
+        <span class="f-lbl">日時（自動入力）</span>
+        <input class="f-inp" id="su-datetime" type="text" readonly>
+        <span class="f-hint">記録開始時の現在時刻が自動で入ります</span>
+      </div>
+      <div class="f-grp">
+        <span class="f-lbl">場所</span>
+        <input class="f-inp" id="su-venue" type="text" placeholder="例: 県総合運動公園テニスコート">
+      </div>
+      <div class="f-grp">
+        <span class="f-lbl">試合の組み合わせ</span>
+        <input class="f-inp" id="su-matchup" type="text" placeholder="例: 第60回タイムス杯 準決勝">
+      </div>
+    </div>
+
+    <!-- ② 選手名・コート位置・サーブ権（統合テーブル） -->
+    <div class="su-box">
+      <div class="su-box-title"><span>②</span> 選手・コート位置・サービス権</div>
+      <table class="setup-table">
+        <thead>
+          <tr>
+            <th class="left-h"></th>
+            <th>P<br><span style="font-weight:500;opacity:.7">後衛</span></th>
+            <th>Q<br><span style="font-weight:500;opacity:.7">前衛</span></th>
+            <th>コート位置<br>（奥側）</th>
+            <th>最初の<br>サーブ権</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="pair1-row">
+            <td class="pair-label" id="pair1-label">ペア1</td>
+            <td><input class="name-inp" id="p1P" type="text" placeholder="例: たろう"
+                       oninput="refreshLabels()"></td>
+            <td><input class="name-inp" id="p1Q" type="text" placeholder="例: よしお"
+                       oninput="refreshLabels()"></td>
+            <td class="radio-cell">
+              <button class="radio-btn" id="oku-btn-1" onclick="setOku(1)">●</button>
+            </td>
+            <td class="radio-cell">
+              <button class="radio-btn" id="sv-btn-1" onclick="setSvPair(1)">●</button>
+            </td>
+          </tr>
+          <tr class="pair2-row">
+            <td class="pair-label" id="pair2-label">ペア2</td>
+            <td><input class="name-inp" id="p2P" type="text" placeholder="例: 一朗"
+                       oninput="refreshLabels()"></td>
+            <td><input class="name-inp" id="p2Q" type="text" placeholder="例: 二朗"
+                       oninput="refreshLabels()"></td>
+            <td class="radio-cell">
+              <button class="radio-btn" id="oku-btn-2" onclick="setOku(2)">●</button>
+            </td>
+            <td class="radio-cell">
+              <button class="radio-btn" id="sv-btn-2" onclick="setSvPair(2)">●</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <!-- 凡例 -->
+      <div class="legend-row">
+        <span><span class="legend-dot" style="background:#f97316"></span>okuペア（コート奥側）</span>
+        <span><span class="legend-dot" style="background:#3b82f6"></span>maeペア（コート手前側）</span>
+        <span style="color:#94a3b8">● = 選択中　○ = 未選択</span>
+      </div>
+      <div style="font-size:.7em;color:#94a3b8;margin-top:8px;line-height:1.6;">
+        コート位置の奥側にいるペアを選択 → もう一方は自動でコート手前になります。
+      </div>
+    </div>
+
+    <button class="su-start" onclick="startMatch()">▶ 試合記録を開始する</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════
+     試合記録画面
+══════════════════════════════ -->
+<div id="matchScreen" class="screen">
+  <!-- スコアボード -->
+  <div class="scoreboard">
+    <div class="sb-meta" id="sbMeta">─</div>
+    <table class="score-table" id="scoreTable">
+      <thead><tr>
+        <th class="name-h">ペア</th>
+        <th style="min-width:58px;text-align:left;">P・Q</th>
+        <th style="min-width:36px;">G</th>
+        <th style="min-width:36px;">B</th>
+        <th style="min-width:28px;">S</th>
+      </tr></thead>
+      <tbody id="scoreTb"></tbody>
+    </table>
+  </div>
+
+  <!-- 情報バー（取消ボタン常時表示） -->
+  <div class="info-bar">
+    <span class="pt-badge" id="ptBadge">1G-1</span>
+    <span class="fs-tag" id="fsTag"></span>
+    <button class="undo-always-btn" id="undoAlwaysBtn" onclick="undoAction()">↩ 取消</button>
+  </div>
+
+  <!-- コート＋入力パネル -->
+  <div class="court-body" id="courtBody">
+    <!-- コートSVG -->
+    <div class="court-wrap">
+      <div class="court-tgl">
+        <button class="c-tgl-btn on" id="btnTraj" onclick="togTraj()">軌跡</button>
+        <button class="c-tgl-btn"    id="btnHeat" onclick="togHeat()">HEAT</button>
+      </div>
+      <div class="court-area" style="position:relative;">
+        <svg id="csvg" viewBox="-20 -20 303 548"
+             onclick="courtClick(event)" style="cursor:crosshair;display:block;width:100%;height:auto;">
+          <defs>
+            <marker id="m0" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="#ef4444"/></marker>
+            <marker id="m1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="#f97316"/></marker>
+            <marker id="m2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="#3b82f6"/></marker>
+            <marker id="m3" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="#22d3ee"/></marker>
+            <marker id="mp" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10z" fill="#67e8f9"/></marker>
+            <filter id="glow"><feGaussianBlur stdDeviation="2.5" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+          </defs>
+          <rect x="-20" y="-20" width="303" height="548" fill="#05091a"/>
+          <rect x="-18" y="-18" width="299" height="544" fill="none" stroke="#1a3050" stroke-width="1" stroke-dasharray="4,4" rx="3" opacity=".5"/>
+          <rect x="37" y="28" width="186" height="228" fill="#12243c"/>
+          <rect x="37" y="256" width="186" height="224" fill="#14356a"/>
+          <rect x="37"  y="28" width="24" height="452" fill="#0a1e30" opacity=".65"/>
+          <rect x="199" y="28" width="24" height="452" fill="#0a1e30" opacity=".65"/>
+          <rect x="61"  y="131" width="69" height="125" fill="#163060" opacity=".35"/>
+          <rect x="130" y="131" width="69" height="125" fill="#163060" opacity=".35"/>
+          <rect x="61"  y="256" width="69" height="123" fill="#163060" opacity=".35"/>
+          <rect x="130" y="256" width="69" height="123" fill="#163060" opacity=".35"/>
+          <rect x="37" y="28" width="186" height="452" fill="none" stroke="#b0d4f0" stroke-width="1.8"/>
+          <line x1="61"  y1="28" x2="61"  y2="480" stroke="#b0d4f0" stroke-width="1.4"/>
+          <line x1="199" y1="28" x2="199" y2="480" stroke="#b0d4f0" stroke-width="1.4"/>
+          <line x1="61" y1="131" x2="199" y2="131" stroke="#b0d4f0" stroke-width="1.4"/>
+          <line x1="61" y1="379" x2="199" y2="379" stroke="#b0d4f0" stroke-width="1.4"/>
+          <line x1="130" y1="131" x2="130" y2="379" stroke="#b0d4f0" stroke-width="1.4"/>
+          <rect x="35" y="252" width="193" height="8" fill="#000" opacity=".32" rx="1"/>
+          <rect x="35" y="252" width="193" height="6" fill="#3c5872" rx="2"/>
+          <line x1="37" y1="256" x2="223" y2="256" stroke="#8cc0dc" stroke-width="1.8"/>
+          <rect x="33"  y="246" width="5" height="16" fill="#4a7090" rx="1"/>
+          <rect x="222" y="246" width="5" height="16" fill="#4a7090" rx="1"/>
+          <text x="130" y="18"  fill="#2a5080" font-size="9.5" text-anchor="middle" font-family="sans-serif" font-weight="700">コート奥</text>
+          <text x="130" y="499" fill="#2a5a9c" font-size="9.5" text-anchor="middle" font-family="sans-serif" font-weight="700">コート手前</text>
+          <text x="231" y="259" fill="#2a4a72" font-size="8" font-family="sans-serif">NET</text>
+          <text x="33" y="31"  fill="#1a3a58" font-size="7" text-anchor="end" font-family="sans-serif">0m</text>
+          <text x="33" y="134" fill="#1a3a58" font-size="7" text-anchor="end" font-family="sans-serif">5.5</text>
+          <text x="33" y="259" fill="#1a3a58" font-size="7" text-anchor="end" font-family="sans-serif">11.9</text>
+          <text x="33" y="382" fill="#1a3a58" font-size="7" text-anchor="end" font-family="sans-serif">18.3</text>
+          <text x="33" y="481" fill="#1a3a58" font-size="7" text-anchor="end" font-family="sans-serif">23.8m</text>
+          <g id="gPos"></g><g id="gShots"></g><g id="gPend"></g><g id="gPrev"></g>
+        </svg>
+        <canvas id="hcvs" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;display:none;opacity:.72;"></canvas>
+      </div>
+    </div>
+
+    <!-- 入力エリア -->
+    <div class="input-panel" id="inputArea">
+      <div style="color:#64748b;text-align:center;padding:30px;">準備中...</div>
+    </div>
+  </div>
+
+  <!-- ポイントログ -->
+  <div class="pt-log">
+    <div class="pt-log-title">📋 ポイントログ</div>
+    <div style="overflow-x:auto;">
+      <table class="log-table">
+        <thead><tr>
+          <th>本目</th><th>サーブ</th><th>1stF</th>
+          <th>打X</th><th>打Y</th><th>着X</th><th>着Y</th>
+          <th>選手</th><th>結果</th><th>球種</th><th>ミス</th>
+        </tr></thead>
+        <tbody id="logTb"><tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:8px;">記録なし</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ツールバー -->
+  <div class="toolbar">
+    <button class="tb-btn" onclick="expCSV()">📥 CSV</button>
+    <button class="tb-btn danger" onclick="openEndModal()">🏁 試合終了</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════
+   定数
+══════════════════════════════════════ */
+/* ─ コートジオメトリ ─ */
+const CX=37, CY=28, CW=186, CH=452;
+const MW=10.97, ML=23.77;
+const VB_W=303, VB_H=548, VB_OX=-20, VB_OY=-20, CEX=20;
+function svPx(mx,my){return{x:CX+mx*(CW/MW), y:CY+my*(CH/ML)};}
+function pxMs(sx,sy){return{x:+((sx-CX)/CW*MW).toFixed(2), y:+((sy-CY)/CH*ML).toFixed(2)};}
+function inExt(sx,sy){return sx>=(CX-CEX)&&sx<=(CX+CW+CEX)&&sy>=(CY-CEX)&&sy<=(CY+CH+CEX);}
+const PC_COL={okuP:'#ef4444',okuQ:'#f97316',maeP:'#3b82f6',maeQ:'#22d3ee'};
+const PC_MKI={okuP:0,okuQ:1,maeP:2,maeQ:3};
+
+// コート描画状態
+let SHOW_TRAJ=true, SHOW_HEAT=false;
+let PEND_HIT=null, PEND_LAND=null;
+
+const SHOTS = [
+  {g:'サービス',   items:['1stSer','2ndSer']},
+  {g:'レシーブ',   items:['Frec','Brec','Ftwst','Btwst']},
+  {g:'ストローク', items:['Fstr','Bstr','Flob','Blob','top','pass']},
+  {g:'ボレー',     items:['Fvol','Bvol','FLvol','BLvol','FHvol','BHvol']},
+  {g:'スマッシュ', items:['Fsma','Bsma']},
+  {g:'フォロー',   items:['foll']},
+];
+const MISSES = [
+  {c:'SO',    d:'サイドアウト', cl:'#ea580c'},
+  {c:'BO',    d:'バックアウト', cl:'#d97706'},
+  {c:'N',     d:'ネット',       cl:'#dc2626'},
+  {c:'C',     d:'チップ',       cl:'#db2777'},
+  {c:'Df',    d:'ダブルフォルト',cl:'#4f46e5'},
+  {c:'other', d:'その他',        cl:'#64748b'},
+];
+// 奇数ゲーム終了後にコートチェンジ
+const CHANGE_GAMES = new Set([1,3,5,7]);
+
+/* ══════════════════════════════════════
+   アプリ状態
+══════════════════════════════════════ */
+const INFO = {datetime:'', venue:'', matchup:''};
+
+// 選手データ（0〜3の4名）
+// role: 'okuP'|'okuQ'|'maeP'|'maeQ'
+const PLAYERS = [
+  {name:'', role:''},
+  {name:'', role:''},
+  {name:'', role:''},
+  {name:'', role:''},
+];
+
+let SERVE_TEAM = '';   // 'oku' | 'mae'
+let OKU_AT_OKU = true; // okuペアがコート奥かどうか
+
+// スコア
+let GC = {oku:0, mae:0};  // ゲームカウント
+let BC = {oku:0, mae:0};  // ボールカウント
+let GAME_NUM   = 1;
+let SERVE_NOW  = '';  // 現在のサーブ権
+let IS_FINAL   = false; // ファイナルゲーム中か
+let FINAL_SERVE_TEAM = ''; // ファイナルゲームの最初のサーブチーム
+
+// 記録
+let POINTS = [];
+// 現在入力中のポイント
+let PEND = null;
+let STEP = 'first_serve';  // first_serve → team → shot → miss → complete
+
+/* ══════════════════════════════════════
+   ユーティリティ
+══════════════════════════════════════ */
+function getName(role){
+  const p = PLAYERS.find(pl=>pl.role===role);
+  return p?.name || role;
+}
+function getTeamNames(team){
+  return PLAYERS.filter(pl=>pl.role?.startsWith(team)).map(pl=>pl.name).filter(n=>n).join('・') || team+'ペア';
+}
+function nowStr(){
+  const d=new Date(), pad=n=>String(n).padStart(2,'0');
+  return `${d.getFullYear()}/${pad(d.getMonth()+1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function ptId(){
+  const n = POINTS.filter(p=>p.gameNum===GAME_NUM).length + 1;
+  return `${GAME_NUM}G-${n}`;
+}
+// ファイナルゲーム用bcLabel（7点先取、6-6でデュース）
+function bcLabelFinal(o,m){
+  if(o>=6&&m>=6){
+    const d=o-m;
+    if(d===0) return {oku:'D',mae:'D'};
+    if(d>0)   return {oku:'A',mae:' '};
+    return           {oku:' ',mae:'A'};
+  }
+  return {oku:String(o),mae:String(m)};
+}
+
+// ファイナルゲームの現在のサーバーを返す
+function getFinalServer(){
+  const total = BC.oku + BC.mae;
+  const slot  = Math.floor(total/2) % 4;
+  const ot    = FINAL_SERVE_TEAM==='oku'?'mae':'oku'; // 相手チーム
+  // slot: 0→最初チームP, 1→最初チームQ, 2→相手チームP, 3→相手チームQ
+  const roleMap = [
+    FINAL_SERVE_TEAM+'P',
+    FINAL_SERVE_TEAM+'Q',
+    ot+'P',
+    ot+'Q',
+  ];
+  return roleMap[slot];
+}
+
+function bcLabel(o,m){
+  // 3-3以上はデュースモード（2点差でゲーム獲得）
+  if(o>=3&&m>=3){
+    const d=o-m;
+    if(d===0) return {oku:'D',mae:'D'};   // デュース
+    if(d>0)   return {oku:'A',mae:' '};   // oku アドバンテージ
+    return             {oku:' ',mae:'A'};  // mae アドバンテージ
+  }
+  return {oku:String(o), mae:String(m)};
+}
+function showScreen(id){
+  document.querySelectorAll('.screen').forEach(el=>el.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function toast(id, duration=2000){
+  const el=document.getElementById(id);
+  el.className=el.className.replace(' show','')+' show';
+  setTimeout(()=>{el.className=el.className.replace(' show','');}, duration);
+}
+
+/* ══════════════════════════════════════
+   セットアップ：テーブル入力
+══════════════════════════════════════ */
+
+// どのペアがコート奥か（1 or 2）、どのペアがサーブか（1 or 2）
+let OKU_PAIR  = 1;  // ペア1がデフォルトでokuペア（コート奥）
+let SERVE_PAIR = 1;
+
+function initSetup(){
+  // 日時：呼ばれた時点の時刻を即時反映
+  INFO.datetime = nowStr();
+  const dtEl = document.getElementById('su-datetime');
+  if(dtEl) dtEl.value = INFO.datetime;
+
+  // コート位置・サーブ権をリセット（未選択状態から始める）
+  OKU_PAIR   = 1;
+  SERVE_PAIR = 1;
+
+  // 名前入力欄をクリア（次の試合のため）
+  ['p1P','p1Q','p2P','p2Q'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value='';
+  });
+
+  // 場所・組み合わせはそのまま残す（連続試合で使い回せるように）
+
+  refreshLabels();
+}
+
+// コート位置の奥側を選択
+function setOku(pair){
+  OKU_PAIR = pair;
+  refreshLabels();
+}
+
+// サーブ権を選択
+function setSvPair(pair){
+  SERVE_PAIR = pair;
+  refreshLabels();
+}
+
+// ボタン・ラベルをすべて更新
+function refreshLabels(){
+  const p1oku = OKU_PAIR===1;   // pair1がコート奥（oku）か
+  const p1sv  = SERVE_PAIR===1; // pair1がサーブ権を持つか
+
+  // ── コート位置ボタン ──────────────────────────────
+  // 「奥側」に選ばれているペアだけ checked-oku（橙）、もう一方はニュートラル
+  const ob1 = document.getElementById('oku-btn-1');
+  const ob2 = document.getElementById('oku-btn-2');
+  if(p1oku){
+    ob1.className='radio-btn checked-oku'; ob1.textContent='●'; // pair1が奥 → 橙
+    ob2.className='radio-btn';             ob2.textContent='○'; // pair2は未選択
+  } else {
+    ob1.className='radio-btn';             ob1.textContent='○'; // pair1は未選択
+    ob2.className='radio-btn checked-oku'; ob2.textContent='●'; // pair2が奥 → 橙
+  }
+
+  // ── サーブ権ボタン ──────────────────────────────
+  // サーブ権を持つペアはそのペアのチームカラー、もう一方はニュートラル
+  // チームカラー: okuペア=橙(checked-oku)、maeペア=青(checked-mae)
+  const sb1 = document.getElementById('sv-btn-1');
+  const sb2 = document.getElementById('sv-btn-2');
+  if(p1sv){
+    // pair1がサーブ権 → pair1のチームカラーで強調
+    sb1.className = 'radio-btn ' + (p1oku ? 'checked-oku' : 'checked-mae');
+    sb1.textContent = '●';
+    sb2.className = 'radio-btn';
+    sb2.textContent = '○';
+  } else {
+    // pair2がサーブ権 → pair2のチームカラーで強調
+    sb1.className = 'radio-btn';
+    sb1.textContent = '○';
+    sb2.className = 'radio-btn ' + (p1oku ? 'checked-mae' : 'checked-oku');
+    sb2.textContent = '●';
+  }
+
+  // ── ペアラベル（oku/mae自動表示） ─────────────────
+  const lbl1 = p1oku ? 'okuペア（奥）'  : 'maeペア（手前）';
+  const lbl2 = p1oku ? 'maeペア（手前）': 'okuペア（奥）';
+  const cls1 = p1oku ? 'oku' : 'mae';
+  const cls2 = p1oku ? 'mae' : 'oku';
+  document.getElementById('pair1-label').innerHTML =
+    `ペア1<br><span class="auto-label ${cls1}">${lbl1}</span>`;
+  document.getElementById('pair2-label').innerHTML =
+    `ペア2<br><span class="auto-label ${cls2}">${lbl2}</span>`;
+}
+
+/* ══════════════════════════════════════
+   試合開始
+══════════════════════════════════════ */
+function startMatch(){
+  INFO.venue   = document.getElementById('su-venue').value.trim();
+  INFO.matchup = document.getElementById('su-matchup').value.trim();
+
+  // ペア1,2の名前を読み込む
+  const p1P = document.getElementById('p1P').value.trim() || 'P1';
+  const p1Q = document.getElementById('p1Q').value.trim() || 'Q1';
+  const p2P = document.getElementById('p2P').value.trim() || 'P2';
+  const p2Q = document.getElementById('p2Q').value.trim() || 'Q2';
+
+  // OKU_PAIR に応じて okuP/okuQ/maeP/maeQ を割り当て
+  if(OKU_PAIR === 1){
+    PLAYERS[0] = {name: p1P, role: 'okuP'};
+    PLAYERS[1] = {name: p1Q, role: 'okuQ'};
+    PLAYERS[2] = {name: p2P, role: 'maeP'};
+    PLAYERS[3] = {name: p2Q, role: 'maeQ'};
+  } else {
+    PLAYERS[0] = {name: p1P, role: 'maeP'};
+    PLAYERS[1] = {name: p1Q, role: 'maeQ'};
+    PLAYERS[2] = {name: p2P, role: 'okuP'};
+    PLAYERS[3] = {name: p2Q, role: 'okuQ'};
+  }
+
+  GC       = {oku:0, mae:0};
+  BC       = {oku:0, mae:0};
+  GAME_NUM = 1;
+  // SERVE_PAIR → SERVE_TEAM（okuかmaeか）
+  SERVE_TEAM = (SERVE_PAIR === OKU_PAIR) ? 'oku' : 'mae';
+  SERVE_NOW  = SERVE_TEAM;
+  OKU_AT_OKU = true;
+  POINTS     = [];
+
+  OKU_AT_OKU = true;
+  showScreen('matchScreen');
+  updateScoreboard();
+  initPoint();
+}
+
+/* ══════════════════════════════════════
+   スコアボード更新
+══════════════════════════════════════ */
+function updateScoreboard(){
+  // ファイナルゲームのサーバー表示
+  if(IS_FINAL){
+    const srv = getFinalServer();
+    const srvName = getName(srv);
+    document.getElementById('sbMeta').textContent =
+      `🏆 ファイナルゲーム | サーブ: ${srvName}（${srv}）| ${[INFO.matchup,INFO.venue,INFO.datetime].filter(s=>s).join(' | ')}`;
+  } else {
+    document.getElementById('sbMeta').textContent =
+    [INFO.matchup, INFO.venue, INFO.datetime].filter(s=>s).join('  |  ') || '─';
+  }
+
+  const bLbl = IS_FINAL ? bcLabelFinal(BC.oku,BC.mae) : bcLabel(BC.oku,BC.mae);
+  const svO  = SERVE_NOW==='oku' ? '●' : '';
+  const svM  = SERVE_NOW==='mae' ? '●' : '';
+  const okuPn = getName('okuP');
+  const okuQn = getName('okuQ');
+  const maePn = getName('maeP');
+  const maeQn = getName('maeQ');
+
+  document.getElementById('scoreTb').innerHTML=`
+    <tr class="oku-row">
+      <td class="name-cell">okuペア</td>
+      <td class="pq-cell">${okuPn} / ${okuQn}</td>
+      <td class="g-cell">${GC.oku}</td>
+      <td class="b-cell">${bLbl.oku}</td>
+      <td class="s-cell">${svO}</td>
+    </tr>
+    <tr class="mae-row">
+      <td class="name-cell">maeペア</td>
+      <td class="pq-cell">${maePn} / ${maeQn}</td>
+      <td class="g-cell">${GC.mae}</td>
+      <td class="b-cell">${bLbl.mae}</td>
+      <td class="s-cell">${svM}</td>
+    </tr>`;
+
+  document.getElementById('ptBadge').textContent = ptId();
+  updateUndoBtn();
+}
+
+function updateLog(){
+  const tb=document.getElementById('logTb'); if(!tb) return;
+  if(!POINTS.length){
+    tb.innerHTML='<tr><td colspan="11" style="text-align:center;color:#94a3b8;padding:8px;">記録なし</td></tr>';
+    return;
+  }
+  tb.innerHTML=[...POINTS].reverse().map(p=>{
+    const rp=p.lastPlayer;
+    const rc=p.result==='win'?'color:#166534;font-weight:700':'color:#dc2626;font-weight:700';
+    return `<tr>
+      <td>${p.id}</td>
+      <td style="color:#64748b">${getName(p.server)||'─'}</td>
+      <td style="color:#ca8a04">${p.firstServeFault?'×':'─'}</td>
+      <td>${p.hitX??'─'}</td><td>${p.hitY??'─'}</td>
+      <td>${p.landX??'─'}</td><td>${p.landY??'─'}</td>
+      <td style="${rp?.startsWith('oku')?'color:#f97316':'color:#3b82f6'}">${getName(rp)||'─'}</td>
+      <td style="${rc}">${p.result==='win'?'⭕':'❌'}</td>
+      <td>${p.shotType||'─'}</td>
+      <td style="color:#7c3aed">${p.missType||'─'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function updateUndoBtn(){
+  const btn = document.getElementById('undoAlwaysBtn');
+  if(!btn) return;
+  if(STEP !== 'server_select'){
+    // 入力中はステップをリセットできる
+    btn.textContent = '↩ 入力をリセット';
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  } else if(POINTS.length > 0){
+    // 記録済みポイントがある → 最後の本を取り消せる
+    btn.textContent = `↩ ${POINTS[POINTS.length-1]?.id||'前の本'}を取消`;
+    btn.style.opacity = '1';
+    btn.style.pointerEvents = 'auto';
+  } else {
+    // 何もない
+    btn.textContent = '↩ 取消';
+    btn.style.opacity = '0.35';
+    btn.style.pointerEvents = 'none';
+  }
+}
+
+/* ══════════════════════════════════════
+   ポイント入力フロー
+══════════════════════════════════════ */
+function initPoint(){
+  STEP = 'server_select';
+  PEND = {
+    id: ptId(), gameNum: GAME_NUM,
+    ptInGame: POINTS.filter(p=>p.gameNum===GAME_NUM).length + 1,
+    firstServeFault: false,
+    server: null, receiver: null,
+    hitX: null, hitY: null, landX: null, landY: null,
+    lastPlayer: null, result: null,
+    scoringTeam: null, shotType: null, missType: null,
+    gcOku: GC.oku, gcMae: GC.mae,
+    bcOku: BC.oku, bcMae: BC.mae,
+  };
+  document.getElementById('fsTag').textContent = '';
+  PEND_HIT=null; PEND_LAND=null;
+  clrCourtPend();
+  renderInput();
+  updateScoreboard();
+  updateUndoBtn();
+  drawDecor();
+}
+
+/* ─ 入力UI ─ */
+function renderInput(){
+  document.getElementById('inputArea').innerHTML = buildInput();
+  updateUndoBtn();
+}
+
+function buildInput(){
+
+  /* ⓪ サーバー・レシーバー選択 */
+  if(STEP==='server_select'){
+    const roles = ['okuP','okuQ','maeP','maeQ'];
+    const rows = roles.map(r=>{
+      const nm   = getName(r);
+      const isOku= r.startsWith('oku');
+      const isSrv= PEND.server   === r;
+      const isRcv= PEND.receiver === r;
+      const srvCls= isSrv ? ' sel-srv' : '';
+      const rcvCls= isRcv ? ' sel-rcv' : '';
+      return `
+        <tr class="${isOku?'srv-oku':'srv-mae'}">
+          <td class="srv-name">${nm}<br><span style="font-size:.7em;opacity:.5">${r}</span></td>
+          <td><button class="srv-radio${srvCls}" onclick="setSrvRole('server','${r}')">${isSrv?'●':'○'}</button></td>
+          <td><button class="srv-radio${rcvCls}" onclick="setSrvRole('receiver','${r}')">${isRcv?'●':'○'}</button></td>
+        </tr>`;
+    }).join('');
+    const canNext = PEND.server && PEND.receiver && PEND.server!==PEND.receiver;
+    return `
+      <div class="step-label">⓪ サービス・レシーブの選択</div>
+      <div class="srv-legend">
+        <span><span class="srv-dot" style="background:#166534"></span>サービス</span>
+        <span><span class="srv-dot" style="background:#3b82f6"></span>レシーブ</span>
+        <span style="color:#94a3b8">● = 選択中</span>
+      </div>
+      <table class="srv-table">
+        <thead><tr>
+          <th class="srv-name-h">選手</th>
+          <th>サービス</th>
+          <th>レシーブ</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <button class="srv-next-btn" onclick="goToFirstServe()"
+        ${canNext?'':'disabled'}>
+        ${canNext?'▶ ファーストサービスの入力へ':'サービスとレシーブを選択してください'}
+      </button>`;
+  }
+
+  /* ① 1stサーブ確認 */
+  if(STEP==='first_serve'){
+    return `
+      <div class="step-label">${ptId()} ─ ① ファーストサービス</div>
+      <div class="fs-row">
+        <button class="fs-btn in"  onclick="doFS(false)">
+          ✅ イン<br><small style="font-weight:600;opacity:.75">そのまま記録へ</small>
+        </button>
+        <button class="fs-btn flt" onclick="doFS(true)">
+          ✕ フォルト<br><small style="font-weight:600;opacity:.75">フォルト記録</small>
+        </button>
+      </div>`;
+  }
+
+  /* ② 打点をクリック */
+  if(STEP==='shot_loc'){
+    const ftag = PEND.firstServeFault
+      ? `<div style="font-size:.74em;color:#ca8a04;font-weight:700;margin-bottom:6px;">✕ 1stフォルト記録済</div>` : '';
+    const chk = PEND.hitX!=null
+      ? `<div class="cs-set">✓ 打点設定済 (${PEND.hitX}m, ${PEND.hitY}m)<br>→ 着地点をタップ</div>`
+      : `<div class="cs-tip">← コートをタップして打点を記録</div>`;
+    return `<div class="court-step-box">
+      <button class="bk-btn" onclick="stepBack()" style="margin-bottom:6px;">◀ 1stFに戻る</button>
+      <div class="cs-title">② 打点をタップ</div>
+      ${ftag}
+      <div class="cs-inst">打った場所をコートでタップ</div>
+      ${chk}
+    </div>`;
+  }
+
+  /* ③ 着地点をクリック */
+  if(STEP==='shot_course'){
+    return `<div class="court-step-box">
+      <button class="bk-btn" onclick="stepBack()" style="margin-bottom:6px;">◀ 打点に戻る</button>
+      <div class="cs-title">③ 着地点をタップ</div>
+      <div class="cs-inst">着地した場所をコートでタップ<br><span style="font-size:.85em;opacity:.7">コート外（アウト）も選択可</span></div>
+      <div class="cs-tip">打点: (${PEND.hitX}m, ${PEND.hitY}m)</div>
+    </div>`;
+  }
+
+  /* ④ 最後のプレー選手（4名から1名） */
+  if(STEP==='player'){
+    const ftag = PEND.firstServeFault
+      ? `<div style="font-size:.76em;color:#ca8a04;font-weight:700;margin-bottom:10px;">✕ 1stフォルト記録済</div>` : '';
+    const roles=['okuP','okuQ','maeP','maeQ'];
+    const btns = roles.map(r=>{
+      const nm = getName(r);
+      const isOku = r.startsWith('oku');
+      const pos = r.endsWith('P') ? '後衛' : '前衛';
+      return `
+        <button class="team-btn ${isOku?'oku':'mae'}" onclick="doPlayer('${r}')"
+                style="min-height:80px;padding:14px 6px;">
+          <div style="font-size:1.05em;font-weight:800">${nm}</div>
+          <div class="team-name">${r} ─ ${pos}</div>
+        </button>`;
+    }).join('');
+    return `
+      <button class="bk-btn" onclick="stepBack()">◀ 1stFに戻る</button>
+      <div class="step-label">② 最後にプレーした選手は？</div>
+      ${ftag}
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">${btns}</div>`;
+  }
+
+  /* ③ 得点 or 失点 */
+  if(STEP==='result'){
+    const r = PEND.lastPlayer;
+    const nm = getName(r);
+    const isOku = r.startsWith('oku');
+    const col = isOku ? '#c2410c' : '#1d4ed8';
+    return `
+      <button class="bk-btn" onclick="stepBack()">◀ 選手選択に戻る</button>
+      <div class="step-label">③ 結果は？</div>
+      <div style="font-size:.78em;color:#64748b;margin-bottom:10px;font-weight:600;">
+        最後のプレー選手：<span style="color:${col};font-weight:800">${nm}</span>（${r}）
+      </div>
+      <div class="team-row">
+        <button class="team-btn ${isOku?'oku':'mae'}" onclick="doResult('win')"
+                style="min-height:76px;border-color:${col};">
+          <div style="font-size:1.3em">⭕</div>
+          <div style="font-size:.9em;margin-top:4px;font-weight:700">得点</div>
+        </button>
+        <button class="team-btn ${isOku?'mae':'oku'}" onclick="doResult('lose')"
+                style="min-height:76px;">
+          <div style="font-size:1.3em">❌</div>
+          <div style="font-size:.9em;margin-top:4px;font-weight:700">失点</div>
+        </button>
+      </div>`;
+  }
+
+  /* ④ 球種選択（18種） */
+  if(STEP==='shot'){
+    const r = PEND.lastPlayer;
+    const nm = getName(r);
+    const isOku = r.startsWith('oku');
+    const col = isOku ? '#c2410c' : '#1d4ed8';
+    const res = PEND.result === 'win' ? '⭕ 得点' : '❌ 失点';
+    let html='';
+    SHOTS.forEach(g=>{
+      html+=`<div class="shot-section"><div class="shot-cat">${g.g}</div><div class="shot-row">`;
+      g.items.forEach(c=>{ html+=`<button class="shot-btn" onclick="doShot('${c}')">${c}</button>`; });
+      html+=`</div></div>`;
+    });
+    return `
+      <button class="bk-btn" onclick="stepBack()">◀ 得点/失点に戻る</button>
+      <div style="font-size:.76em;color:#64748b;margin-bottom:8px;font-weight:600;">
+        <span style="color:${col};font-weight:800">${nm}</span> ─ ${res}
+      </div>
+      <div class="step-label">④ 球種（18種）─ どのショットで？</div>
+      ${html}`;
+  }
+
+  /* ⑤ ミス内容（失点時のみ） */
+  if(STEP==='miss'){
+    const btns = MISSES.map(m=>`
+      <button class="miss-btn" onclick="doMiss('${m.c}')"
+              style="border-color:${m.cl};color:${m.cl};">
+        <div style="font-size:1em">${m.c}</div>
+        <div style="font-size:.72em;opacity:.75;margin-top:3px">${m.d}</div>
+      </button>`).join('');
+    const r = PEND.lastPlayer;
+    const nm = getName(r);
+    const col = r?.startsWith('oku') ? '#c2410c' : '#1d4ed8';
+    return `
+      <button class="bk-btn" onclick="stepBack()">◀ 球種に戻る</button>
+      <div style="font-size:.76em;color:#64748b;margin-bottom:8px;font-weight:600;">
+        <span style="color:${col};font-weight:800">${nm}</span> ─ ❌ 失点 ─ <b>${PEND.shotType||'─'}</b>
+      </div>
+      <div class="step-label">⑤ ミスの内容は？</div>
+      <div class="miss-grid">${btns}</div>`;
+  }
+
+  /* ⑥ 完了 */
+  if(STEP==='complete'){
+    const p = PEND;
+    const r = p.lastPlayer;
+    const nm = getName(r);
+    const isOku = r?.startsWith('oku');
+    const col = isOku ? '#c2410c' : '#1d4ed8';
+    const scoringTeam = p.scoringTeam;
+    const tc = scoringTeam==='oku' ? '#c2410c' : '#1d4ed8';
+    const tn = getTeamNames(scoringTeam);
+    const res = p.result==='win' ? '⭕ 得点' : '❌ 失点';
+    const nextN = POINTS.filter(x=>x.gameNum===GAME_NUM).length + 2;
+    const chNote = CHANGE_GAMES.has(GAME_NUM) ? ' ─ コートチェンジ🔄' : '';
+
+    // ─ 記録完了後のスコアをプレビュー計算 ─
+    let pBC = {oku:BC.oku, mae:BC.mae};
+    let pGC = {oku:GC.oku, mae:GC.mae};
+    pBC[scoringTeam]++;
+
+    // ゲーム勝利プレビュー判定（非デュース4点 or デュース2点差）
+    const _po=pBC.oku, _pm=pBC.mae;
+    const _pDeuceAt = IS_FINAL ? 6 : 3;
+    const _pWinAt   = IS_FINAL ? 7 : 4;
+    const _pInDeuce = (_po>=_pDeuceAt && _pm>=_pDeuceAt);
+    const advGameWon = (!_pInDeuce && (_po>=_pWinAt||_pm>=_pWinAt)) || (_pInDeuce && Math.abs(_po-_pm)>=2);
+    let pBLbl;
+    if(advGameWon && _pInDeuce){
+      // デュースでのゲーム確定 → 得点ペアだけ「AA」
+      const loserCnt = scoringTeam==='oku' ? String(_pm) : String(_po);
+      pBLbl = scoringTeam==='oku'
+        ? {oku:'AA', mae:loserCnt}
+        : {oku:loserCnt, mae:'AA'};
+    } else if(advGameWon){
+      // 非デュース4点でのゲーム確定 → BCリセットプレビュー
+      pBLbl = {oku:'0', mae:'0'};
+    } else {
+      pBLbl = IS_FINAL ? bcLabelFinal(pBC.oku,pBC.mae) : bcLabel(pBC.oku,pBC.mae);
+    }
+    const gameWonPreview = advGameWon;
+
+    // ゲーム確定時は pGC も +1
+    if(advGameWon){
+      const gWinner = _po > _pm ? 'oku' : 'mae';
+      pGC[gWinner]++;
+    }
+    const okuGScored = pGC.oku > GC.oku ? ' scored' : '';
+    const maeGScored = pGC.mae > GC.mae ? ' scored' : '';
+    // game-end（赤）は得点ペアのみ
+    const advWinner2 = advGameWon ? (pBC.oku>pBC.mae?'oku':'mae') : null;
+    const okuBScored = advGameWon ? (advWinner2==='oku' ? ' game-end' : '') : (scoringTeam==='oku' ? ' scored' : '');
+    const maeBScored = advGameWon ? (advWinner2==='mae' ? ' game-end' : '') : (scoringTeam==='mae' ? ' scored' : '');
+
+    const scorePreview = `
+      <div class="score-preview">
+        <div class="sp-title">📊 完了後のスコア</div>
+        <table class="sp-table">
+          <thead><tr>
+            <th class="sp-name-h">ペア</th>
+            <th>G</th><th>B</th>
+          </tr></thead>
+          <tbody>
+            <tr class="sp-oku">
+              <td class="sp-name">${getTeamNames('oku')}</td>
+              <td class="sp-g${okuGScored}">${pGC.oku}</td>
+              <td class="sp-b${advGameWon?' game-end':okuBScored}">${pBLbl.oku}</td>
+            </tr>
+            <tr class="sp-mae">
+              <td class="sp-name">${getTeamNames('mae')}</td>
+              <td class="sp-g${maeGScored}">${pGC.mae}</td>
+              <td class="sp-b${advGameWon?' game-end':maeBScored}">${pBLbl.mae}</td>
+            </tr>
+          </tbody>
+        </table>
+        ${advGameWon ? `<div style="text-align:center;margin-top:8px;font-size:.82em;font-weight:800;color:#166534;line-height:1.5;">🏅 ゲーム獲得！<br><span style="font-size:.88em;font-weight:600">「ゲーム終了」を押してください</span></div>` : ''}
+      </div>`;
+
+    return `
+      <div class="complete-wrap">
+        <div class="complete-card">
+          <div class="complete-title">✅ ${p.id} 記録完了</div>
+          <div class="complete-info">
+            ${p.firstServeFault?'<span style="color:#ca8a04;font-weight:700">✕ 1stフォルト</span><br>':''}
+            プレー選手: <span style="color:${col};font-weight:800">${nm}</span>（${r}）<br>
+            結果: <b>${res}</b> → <span style="color:${tc};font-weight:700">${tn}</span> の得点<br>
+            球種: <b>${p.shotType||'─'}</b>${p.missType?` ─ <span style='color:#64748b'>${p.missType}</span> (${MISSES.find(m=>m.c===p.missType)?.d||''})`:''}<br>
+          </div>
+
+          ${p.skipped
+            ? `<button class="bk-btn" onclick="undoSkipToFirst()" style="margin-bottom:8px;">◀ 直前の操作に戻る</button>`
+            : `<button class="bk-btn" onclick="stepBack()" style="margin-bottom:8px;">◀ 直前の操作に戻る</button>`
+          }
+          <button class="next-btn" onclick="nextPt()"
+            ${advGameWon ? 'disabled style="opacity:.35;cursor:not-allowed;pointer-events:none;"' : ''}>
+            ▶ ${GAME_NUM}G-${nextN} 次の本へ
+            ${advGameWon ? '<br><small style="font-size:.78em;font-weight:600;opacity:.8">（ゲーム終了を選んでください）</small>' : ''}
+          </button>
+          <button class="endg-btn" onclick="endGame()">🔄 ${GAME_NUM}G ゲーム終了${chNote}</button>
+          ${!IS_FINAL && advGameWon ? `<button class="final-btn" onclick="startFinalGame()">🏆 ファイナルゲームへ進む</button>` : ''}
+          <button class="match-end-btn" onclick="openEndModal()">🏁 試合終了</button>
+        </div>
+        ${scorePreview}
+      </div>`;
+  }
+
+  return '';
+}
+
+/* ─ ステップハンドラ ─ */
+function doFS(fault){
+  PEND.firstServeFault = fault;
+  if(fault) document.getElementById('fsTag').textContent = '✕ 1stフォルト';
+  STEP = 'shot_loc';
+  renderInput();
+}
+
+// ④ 選手選択
+function doPlayer(role){
+  PEND.lastPlayer = role;
+  STEP = 'result';
+  renderInput();
+}
+
+// ③ 得点/失点
+function doResult(res){
+  PEND.result = res;
+  const playerTeam = PEND.lastPlayer.startsWith('oku') ? 'oku' : 'mae';
+  PEND.scoringTeam = (res === 'win') ? playerTeam : (playerTeam==='oku'?'mae':'oku');
+  STEP = 'shot';
+  renderInput();
+}
+
+// ④ 球種
+function doShot(c){
+  PEND.shotType = c;
+  if(PEND.result === 'lose'){
+    STEP = 'miss';
+    renderInput();
+  } else {
+    commitPoint();
+  }
+}
+
+// ⑤ ミス内容（失点時のみ）
+function doMiss(c){
+  PEND.missType = c;
+  commitPoint();
+}
+
+function commitPoint(){
+  // ここではスコアをまだ更新しない
+  // 完了カードを表示するだけ（スコアは nextPt / endGame 時に反映）
+  STEP='complete';
+  renderInput();
+  // スコアボードは変更なし（次の本へ進むまで変えない）
+}
+
+// 実際のスコア加算処理（nextPt・endGame から呼ぶ）
+function applyScore(){
+  PEND.serveNow = SERVE_NOW;
+  BC[PEND.scoringTeam]++;
+
+  // ─ ゲーム勝利判定（通常: 4点 / ファイナル: 7点）─
+  const o=BC.oku, m=BC.mae;
+  const deuceAt   = IS_FINAL ? 6 : 3;
+  const winAt     = IS_FINAL ? 7 : 4;
+  const inDeuce   = (o>=deuceAt && m>=deuceAt);
+  const nonDeuce4 = !inDeuce && (o>=winAt||m>=winAt);
+  const advWin    = inDeuce && Math.abs(o-m)>=2;
+  const gameWon   = nonDeuce4 || advWin;
+
+  if(gameWon){
+    const winner = o>m ? 'oku' : 'mae';
+    GC[winner]++;
+    BC = {oku:0, mae:0};
+    PEND.gameWon = true;
+  }
+
+  POINTS.push({...PEND});
+  updateScoreboard();
+  redrawShots();
+  if(SHOW_HEAT) drawHeatMap();
+  updateLog();
+  return gameWon;
+}
+
+function stepBack(){
+  switch(STEP){
+    case 'player':   STEP='shot_course'; PEND_LAND=null; PEND.landX=null; PEND.landY=null; clrCourtPend(); if(PEND_HIT) drawHitDot(PEND_HIT.sx,PEND_HIT.sy); break;
+    case 'shot_course': STEP='shot_loc'; PEND_HIT=null; PEND.hitX=null; PEND.hitY=null; clrCourtPend(); break;
+    case 'shot_loc':    STEP='first_serve'; break;
+    case 'first_serve': STEP='server_select'; break;
+    case 'result':   STEP='player';  PEND.lastPlayer=null; break;
+    case 'shot':     STEP='result';  PEND.result=null; PEND.scoringTeam=null; break;
+    case 'miss':     STEP='shot';    PEND.missType=null; break;
+    case 'complete':
+      // スキップポイントはfirst_serveへ、通常入力はmiss/shotへ戻る
+      if(PEND.skipped){
+        PEND=null; STEP='first_serve';
+        document.getElementById('fsTag').textContent='';
+      } else if(PEND.missType){
+        STEP='miss'; PEND.missType=null;
+      } else {
+        STEP='shot'; PEND.shotType=null;
+      }
+      break;
+  }
+  renderInput();
+}
+
+function nextPt(){
+  const gameWon = applyScore();
+  if(gameWon && !IS_FINAL){
+    // 通常ゲーム終了 → 自動でゲーム進行
+    const fg = GAME_NUM;
+    GAME_NUM++;
+    SERVE_NOW = SERVE_NOW==='oku'?'mae':'oku';
+    if(CHANGE_GAMES.has(fg)){
+      OKU_AT_OKU = !OKU_AT_OKU;
+      toast('changeToast', 3000);
+    }
+  }
+  // ファイナル中に勝利した場合はゲーム終了ボタンへ（自動進行しない）
+  initPoint();
+}
+
+function endGame(){
+  // ── ゲーム終了：最後に得点したペアにGを加算 ──
+  // undo用スナップショットは initPoint() で「加算前」の値として設定済み
+  PEND.serveNow = SERVE_NOW;
+  PEND.gameWon  = true;
+
+  // 得点チームのGを+1、Bをリセット
+  GC[PEND.scoringTeam]++;
+  BC = {oku:0, mae:0};
+
+  POINTS.push({...PEND});
+  updateScoreboard();
+
+  // ゲーム番号を進める
+  const fg = GAME_NUM;
+  GAME_NUM++;
+  // サービス権を相手チームへ
+  SERVE_NOW = SERVE_NOW === 'oku' ? 'mae' : 'oku';
+  // 奇数ゲーム終了後はコートチェンジ
+  if(CHANGE_GAMES.has(fg)){
+    OKU_AT_OKU = !OKU_AT_OKU;
+    toast('changeToast', 3000);
+    drawDecor();
+  }
+  initPoint();
+}
+
+/* ─ アンドゥ ─ */
+function undoAction(){
+  // 完了カード or 入力途中 → server_select から再入力
+  if(STEP!=='server_select'){
+    STEP='server_select';
+    if(PEND){
+      PEND.server=null; PEND.receiver=null;
+      PEND.hitX=null; PEND.hitY=null; PEND.landX=null; PEND.landY=null;
+      PEND.lastPlayer=null; PEND.result=null;
+      PEND.scoringTeam=null; PEND.shotType=null; PEND.missType=null;
+      PEND.firstServeFault=false;
+    }
+    PEND_HIT=null; PEND_LAND=null; clrCourtPend();
+    document.getElementById('fsTag').textContent='';
+    renderInput();
+    toast('undoToast');
+    return;
+  }
+  // first_serve 待ち → 直前のポイントを取り消して完了カードを再表示
+  if(!POINTS.length){ toast('undoToast'); return; }
+  const last = POINTS.pop();
+  // GC・BCをそのポイントの記録前に巻き戻す
+  GC = {oku: last.gcOku, mae: last.gcMae};
+  BC = {oku: last.bcOku, mae: last.bcMae};
+  // ゲームをまたいでいた場合はゲーム番号・コート・サーブ権を戻す
+  if(last.gameNum !== GAME_NUM){
+    GAME_NUM = last.gameNum;
+    if(CHANGE_GAMES.has(GAME_NUM)) OKU_AT_OKU = !OKU_AT_OKU;
+  }
+  if(last.serveNow) SERVE_NOW = last.serveNow;
+  updateScoreboard();
+
+  // 直前の完了カード画面に戻す（first_serveではなく complete ステップへ）
+  PEND = {...last};
+  STEP = 'complete';
+  renderInput();
+  updateUndoBtn();
+  toast('undoToast');
+}
+
+// ファイナルゲームへ進む
+function startFinalGame(){
+  // applyScore で既にPOINTSに入っているので、ゲーム番号・状態だけ更新
+  const fg = GAME_NUM;
+  GAME_NUM++;
+  SERVE_NOW = SERVE_NOW==='oku'?'mae':'oku';
+  if(CHANGE_GAMES.has(fg)){
+    OKU_AT_OKU = !OKU_AT_OKU;
+    toast('changeToast', 3000);
+    drawDecor();
+  }
+  IS_FINAL = true;
+  FINAL_SERVE_TEAM = SERVE_NOW; // ファイナルの最初のサーブチーム
+  BC = {oku:0, mae:0};
+  initPoint();
+}
+
+/* ─ コート描画 ─ */
+function drawDecor(){
+  const roles=['okuP','okuQ','maeP','maeQ'];
+  const pos = OKU_AT_OKU
+    ? {okuP:{x:130,y:46}, okuQ:{x:130,y:166}, maeP:{x:130,y:460}, maeQ:{x:130,y:340}}
+    : {okuP:{x:130,y:460}, okuQ:{x:130,y:340}, maeP:{x:130,y:46},  maeQ:{x:130,y:166}};
+  let h='';
+  roles.forEach(r=>{
+    const pt=pos[r], col=PC_COL[r], nm=getName(r)||r;
+    const lb=nm.length>7?nm.slice(0,7)+'…':nm;
+    h+=`<circle cx="${pt.x}" cy="${pt.y}" r="22" fill="${col}" opacity=".07"/>
+        <text x="${pt.x}" y="${pt.y+4}" fill="${col}" font-size="8" text-anchor="middle"
+              font-family="sans-serif" opacity=".35" font-weight="700">${lb}</text>`;
+  });
+  const el=document.getElementById('gPos');
+  if(el) el.innerHTML=h;
+}
+
+function courtClick(e){
+  if(STEP!=='shot_loc' && STEP!=='shot_course') return;
+  const svg=document.getElementById('csvg');
+  const r=svg.getBoundingClientRect();
+  const cx=e.touches?e.touches[0].clientX:e.clientX;
+  const cy=e.touches?e.touches[0].clientY:e.clientY;
+  const sx=(cx-r.left)*(VB_W/r.width)+VB_OX;
+  const sy=(cy-r.top) *(VB_H/r.height)+VB_OY;
+  if(!inExt(sx,sy)) return;
+  const m=pxMs(sx,sy);
+  if(STEP==='shot_loc'){
+    PEND_HIT={sx,sy,mx:m.x,my:m.y};
+    PEND.hitX=m.x; PEND.hitY=m.y;
+    drawHitDot(sx,sy);
+    STEP='shot_course'; renderInput();
+  } else {
+    PEND_LAND={sx,sy,mx:m.x,my:m.y};
+    PEND.landX=m.x; PEND.landY=m.y;
+    clrCourtPrev(); drawPendArrow();
+    STEP='player'; renderInput();
+  }
+}
+
+function drawHitDot(sx,sy){
+  const el=document.getElementById('gPend'); if(!el) return;
+  el.innerHTML=`
+    <circle cx="${sx}" cy="${sy}" r="7" fill="#67e8f9" opacity=".85" filter="url(#glow)"/>
+    <circle cx="${sx}" cy="${sy}" r="15" fill="none" stroke="#67e8f9" stroke-width="1.4"
+            stroke-dasharray="4,3" opacity=".30">
+      <animateTransform attributeName="transform" type="rotate"
+        from="0 ${sx} ${sy}" to="360 ${sx} ${sy}" dur="4s" repeatCount="indefinite"/>
+    </circle>`;
+}
+function drawPendArrow(){
+  const h=PEND_HIT, l=PEND_LAND;
+  const el=document.getElementById('gPend'); if(!el) return;
+  el.innerHTML=`
+    <line x1="${h.sx.toFixed(1)}" y1="${h.sy.toFixed(1)}"
+          x2="${l.sx.toFixed(1)}" y2="${l.sy.toFixed(1)}"
+          stroke="#67e8f9" stroke-width="2.2" stroke-dasharray="6,4"
+          marker-end="url(#mp)" opacity=".65"/>
+    <circle cx="${h.sx.toFixed(1)}" cy="${h.sy.toFixed(1)}" r="5" fill="#67e8f9" opacity=".85"/>
+    <circle cx="${l.sx.toFixed(1)}" cy="${l.sy.toFixed(1)}" r="3.5" fill="#67e8f9" opacity=".55"/>`;
+}
+function clrCourtPrev(){const el=document.getElementById('gPrev'); if(el)el.innerHTML='';}
+function clrCourtPend(){
+  const ep=document.getElementById('gPend'); if(ep)ep.innerHTML='';
+  const ev=document.getElementById('gPrev'); if(ev)ev.innerHTML='';
+}
+function redrawShots(){
+  const el=document.getElementById('gShots'); if(!el) return;
+  if(!SHOW_TRAJ){ el.innerHTML=''; return; }
+  let h='';
+  POINTS.forEach(p=>{
+    if(p.hitX==null||p.landX==null) return;
+    const rp=p.lastPlayer||'okuP';
+    const f=svPx(p.hitX,p.hitY), t=svPx(p.landX,p.landY);
+    const col=PC_COL[rp]||'#aaa', mi=PC_MKI[rp]??0;
+    const dash=p.result==='lose'?'stroke-dasharray="5,4"':'';
+    const sw=p.result==='win'?3.2:1.8;
+    h+=`<line x1="${f.x.toFixed(1)}" y1="${f.y.toFixed(1)}" x2="${t.x.toFixed(1)}" y2="${t.y.toFixed(1)}"
+             stroke="${col}" stroke-width="${sw}" ${dash} marker-end="url(#m${mi})" opacity=".8"/>
+        <circle cx="${f.x.toFixed(1)}" cy="${f.y.toFixed(1)}" r="4" fill="${col}" opacity=".9"/>
+        <circle cx="${t.x.toFixed(1)}" cy="${t.y.toFixed(1)}" r="2.8" fill="${col}" opacity=".58"/>`;
+  });
+  el.innerHTML=h;
+}
+function drawHeatMap(){
+  const cv=document.getElementById('hcvs'); if(!cv) return;
+  const ctx=cv.getContext('2d');
+  // canvasはCSSでSVGに合わせてstyle=width/height100%なので内部解像度を揃える
+  const svg=document.getElementById('csvg');
+  cv.width=svg.clientWidth||303; cv.height=svg.clientHeight||548;
+  ctx.clearRect(0,0,cv.width,cv.height);
+  if(!POINTS.length||!SHOW_HEAT) return;
+  const scaleX=cv.width/VB_W, scaleY=cv.height/VB_H;
+  const tmp=document.createElement('canvas'); tmp.width=cv.width; tmp.height=cv.height;
+  const tc=tmp.getContext('2d');
+  tc.globalCompositeOperation='lighter';
+  POINTS.forEach(p=>{
+    if(p.landX==null) return;
+    const pt=svPx(p.landX,p.landY);
+    const px=(pt.x-VB_OX)*scaleX, py=(pt.y-VB_OY)*scaleY, rad=36*scaleX;
+    const g=tc.createRadialGradient(px,py,0,px,py,rad);
+    g.addColorStop(0,   'rgba(255,50,0,.56)');
+    g.addColorStop(.38, 'rgba(255,130,0,.20)');
+    g.addColorStop(.72, 'rgba(255,210,0,.06)');
+    g.addColorStop(1,   'rgba(0,0,0,0)');
+    tc.fillStyle=g; tc.beginPath(); tc.arc(px,py,rad,0,Math.PI*2); tc.fill();
+  });
+  const clipX=(CX-VB_OX)*scaleX, clipY=(CY-VB_OY)*scaleY;
+  ctx.save(); ctx.beginPath(); ctx.rect(clipX,clipY,CW*scaleX,CH*scaleY); ctx.clip();
+  ctx.drawImage(tmp,0,0); ctx.restore();
+}
+function togTraj(){
+  SHOW_TRAJ=!SHOW_TRAJ;
+  document.getElementById('btnTraj').className='c-tgl-btn'+(SHOW_TRAJ?' on':'');
+  redrawShots();
+}
+function togHeat(){
+  SHOW_HEAT=!SHOW_HEAT;
+  document.getElementById('btnHeat').className='c-tgl-btn'+(SHOW_HEAT?' on':'');
+  document.getElementById('hcvs').style.display=SHOW_HEAT?'block':'none';
+  drawHeatMap();
+}
+
+// マウスプレビュー（デスクトップ）
+(function(){
+  document.addEventListener('DOMContentLoaded',()=>{
+    const svg=document.getElementById('csvg');
+    if(!svg) return;
+    svg.addEventListener('mousemove',e=>{
+      if(STEP!=='shot_course'||!PEND_HIT) return;
+      const r=svg.getBoundingClientRect();
+      const sx=(e.clientX-r.left)*(VB_W/r.width)+VB_OX;
+      const sy=(e.clientY-r.top) *(VB_H/r.height)+VB_OY;
+      const el=document.getElementById('gPrev'); if(!el) return;
+      const h=PEND_HIT;
+      el.innerHTML=`<line x1="${h.sx.toFixed(1)}" y1="${h.sy.toFixed(1)}"
+        x2="${sx.toFixed(1)}" y2="${sy.toFixed(1)}"
+        stroke="#67e8f9" stroke-width="1.3" stroke-dasharray="4,4"
+        marker-end="url(#mp)" opacity=".25"/>`;
+    });
+    svg.addEventListener('mouseleave',clrCourtPrev);
+  });
+})();
+
+// サービス・レシーブ選択
+function setSrvRole(role, playerRole){
+  PEND[role] = playerRole;
+  renderInput();
+}
+function goToFirstServe(){
+  if(!PEND.server||!PEND.receiver||PEND.server===PEND.receiver) return;
+  STEP = 'first_serve';
+  renderInput();
+}
+
+// スキップポイントの完了カードから最初に戻る
+function undoSkipToFirst(){
+  PEND = null;
+  STEP = 'server_select';
+  document.getElementById('fsTag').textContent='';
+  renderInput();
+}
+
+/* ─ 試合終了 ─ */
+function openEndModal(){
+  const tot = POINTS.length;
+  const goN = getTeamNames('oku');
+  const gmN = getTeamNames('mae');
+  document.getElementById('endModalInfo').innerHTML=`
+    ${INFO.matchup||'─'}<br>
+    ${INFO.datetime||'─'}　${INFO.venue||'─'}<br><br>
+    ゲームカウント: <b>${GC.oku}–${GC.mae}</b><br>
+    記録済みポイント: <b>${tot}本</b><br><br>
+    <span style="color:#64748b;font-size:.9em">終了するとCSVを保存します。</span>`;
+  const _em = document.getElementById('endModal');
+  _em.removeAttribute('style');
+  _em.className='modal-overlay show';
+}
+function closeEndModal(){
+  const em = document.getElementById('endModal');
+  em.style.display = 'none';
+  em.className = 'modal-overlay';
+}
+function confirmEnd(){
+  closeEndModal();
+  expCSV();
+  // CSV保存後、セットアップ画面に戻って次の試合の準備
+  setTimeout(()=>{
+    // 状態をリセット
+    GC={oku:0,mae:0}; BC={oku:0,mae:0};
+    GAME_NUM=1; SERVE_NOW=''; POINTS=[];
+    PEND=null; STEP='first_serve';
+    IS_FINAL=false; FINAL_SERVE_TEAM='';
+    // セットアップ画面へ
+    initSetup();
+    showScreen('suScreen');
+  }, 800);
+}
+
+/* ─ CSV出力 ─ */
+function expCSV(){
+  if(!POINTS.length){ alert('記録がありません'); return; }
+  const meta=[
+    ['試合タイトル', INFO.matchup||''],
+    ['日時',         INFO.datetime||''],
+    ['場所',         INFO.venue||''],
+    ['okuP', getName('okuP')],
+    ['okuQ', getName('okuQ')],
+    ['maeP', getName('maeP')],
+    ['maeQ', getName('maeQ')],
+    [],
+  ];
+  const hd=['本目','ゲーム','ポイント','サービス選手','レシーブ選手','1stFault','打X(m)','打Y(m)','着X(m)','着Y(m)','プレー選手','プレー選手コード','得点/失点','得点ペア','G_oku','G_mae','球種','ミス内容','スキップ'];
+  const rows=POINTS.map(p=>[
+    p.id, p.gameNum, p.ptInGame,
+    getName(p.server)||'',
+    getName(p.receiver)||'',
+    p.firstServeFault?'×':'',
+    p.hitX??'', p.hitY??'', p.landX??'', p.landY??'',
+    getName(p.lastPlayer)||'',
+    p.lastPlayer||'',
+    p.result==='win'?'得点':'失点',
+    getTeamNames(p.scoringTeam)||'',
+    p.gcOku, p.gcMae,
+    p.shotType||'',
+    p.missType||'',
+    p.skipped?'⚡':'',
+  ]);
+  const csv='\uFEFF'+[...meta,hd,...rows].map(r=>r.join(',')).join('\r\n');
+  const now=new Date(), pad=n=>String(n).padStart(2,'0');
+  const fn=`live_${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=fn; a.click();
+}
+
+/* ══ 初期化 ══ */
+initSetup();
+</script>
+</body>
+</html>
